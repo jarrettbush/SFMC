@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+
+    <title>Platform Automations</title>
+  </head>
+  <body>
+    <div class="container">
+      <script runat="server">
+
+        Platform.Load("Core","1.1.1");
+
+        try {
+          // We are storing automation information in a DE so we can re-order what is returned from the API calls by MID, then Last Run Date, then Automation Name          
+
+          // Clear the DE holding all automations so it is current each time the page loads.
+          var deProx = new Script.Util.WSProxy();          
+          var deProps = {
+              CustomerKey: 'E0B30515-94EB-45DA-838A-3203DB1C255E' // The external key of Enterprise_Automations
+          };
+          var deAction = "ClearData";
+          var data = deProx.performItem("DataExtension", deProps, deAction);
+
+          // Get all the BU's within the account         
+          var buProx = new Script.Util.WSProxy();
+          var buCols = ["Name", "ID"];
+          var buFilter = null;
+          var buOpts = null;
+          var buProps = { QueryAllAccounts: true };
+
+          var buRes = buProx.retrieve("Account", buCols, buFilter, buOpts, buProps);
+
+          if (buRes.Results.length > 0) {
+
+            var aProx = new Script.Util.WSProxy();
+            var aCols = ["CustomerKey","Name","Status","LastRunTime","ScheduledTime","IsActive"];
+              var aFilter = {
+                  Property: "Status",
+                  SimpleOperator: "IN",
+                  Value: [-1,0,1,2,3,4,5,6,7,8]
+              };
+            var aRes;
+
+            for (var i = 0; i < buRes.Results.length; i++) {
+
+              //Get the automations for the specific BU
+              aProx.resetClientIds();
+              aProx.setClientId({ "ID": buRes.Results[i].ID });
+              
+              aRes = aProx.retrieve("Automation", aCols, aFilter);
+
+              if (aRes.Results.length > 0) {
+                  
+                var statusObj = {
+                "-1":"Error",
+                "0":"BuildingError",
+                "1":"Building",
+                "2":"Ready",
+                "3":"Running",
+                "4":"Paused",
+                "5":"Stopped",
+                "6":"Scheduled",
+                "7":"Awaiting Trigger",
+                "8":"InactiveTrigger"
+                }
+
+                // These are OOTB Bootstrap classes used as the background colour for the table rows
+                var statusClass = {
+                "-1":"table-danger",
+                "0":"table-danger",
+                "1":"table-warning",
+                "2":"table-success",
+                "3":"table-success",
+                "4":"table-warning",
+                "5":"table-warning",
+                "6":"table-success",
+                "7":"table-success",
+                "8":"table-warning"
+                }
+                  
+                
+                for (var j = 0; j< aRes.Results.length; j++) {                  
+                  var autoName = aRes.Results[j].Name;
+
+                  if (autoName != undefined) {
+                    var autoCK = aRes.Results[j].CustomerKey;
+                    var mid = buRes.Results[i].ID;
+                    var buName = buRes.Results[i].Name;
+                    var autoStatusNum = aRes.Results[j].Status;
+                    var autoStatus = statusObj[autoStatusNum];
+                    var autoClass = statusClass[autoStatusNum];
+                    var lastRunTime = aRes.Results[j].LastRunTime;
+                    var scheduledTime = aRes.Results[j].ScheduledTime;
+                    var isActive = aRes.Results[j].IsActive;
+
+                    if (lastRunTime == 'Mon, 01 Jan 0001 00:00:00 GMT-06:00') {
+                      lastRunTime = ''
+                    }
+                    if (scheduledTime == 'Mon, 01 Jan 0001 00:00:00 GMT-06:00') {
+                      scheduledTime = ''
+                    }
+
+                    Platform.Function.InsertData("Enterprise_Automations",["CustomerKey","MID","AutoName","AutoStatusNum","AutoStatus","LastRunTime","ScheduledTime","IsActive","BU_Name","AutoStatusClass"],[autoCK,mid,autoName,autoStatusNum,autoStatus,lastRunTime,scheduledTime,isActive,buName,autoClass]);
+                  }
+                }
+              }
+            }
+          }
+        } catch(e) {       
+          // Display full error on the page
+          Write('<h3>Error Message:</h3><p>' + Stringify(e.message) + Stringify(e.description) + '</p>');
+        }
+      </script>
+      %%[
+        VAR @eDE, @rows, @mid, @lastRunTime, @scheduledTime
+        SET @mid = ""
+
+        SET @eDE = "Enterprise_Automations"
+        SET @rows = LookupOrderedRows(@eDE, 0, "[MID] ASC, [LastRunTime] DESC, [AutoName] ASC", "IsActive", 1)
+
+        IF RowCount(@rows) >= 1 THEN
+          FOR @i = 1 TO RowCount(@rows) DO
+            SET @lastRunTime = Field(Row(@rows, @i), "LastRunTime")
+            SET @scheduledTime = Field(Row(@rows, @i), "ScheduledTime")
+
+            IF @mid != Field(Row(@rows, @i), "MID") THEN
+              IF @i > 1 THEN ]%%              
+                </tbody>
+              </table>
+              %%[ ENDIF ]%%
+            <h2 class="pt-4 pb-2">Automations for %%=Field(Row(@rows, @i), "BU_Name")=%%</h2>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th scope="col" style="width:50%;">Automation Name</th>
+                    <th scope="col" style="width:16%;">Automation Status</th>
+                    <th scope="col" style="width:16%;">Last Run Time</th>
+                    <th scope="col" style="width:17%;">Scheduled Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+            %%[ ENDIF ]%%
+                  <tr class="%%=Field(Row(@rows, @i), "AutoStatusClass")=%%">
+                    <td>%%=Field(Row(@rows, @i), "AutoName")=%%</td>
+                    <td>%%=Field(Row(@rows, @i), "AutoStatus")=%%</td>
+                    <td>%%[ IF @lastRunTime != "1/1/1900 12:00:00 AM" THEN ]%% %%=FormatDate(SystemDateToLocalDate(@lastRunTime), "d/M/yyyy", "HH:MM", "en-AU")=%% %%[ ENDIF ]%%</td>
+                    <td>%%[ IF @scheduledTime != "1/1/1900 12:00:00 AM" THEN ]%% %%=FormatDate(SystemDateToLocalDate(@scheduledTime), "d MMMM yyyy", "HH:MM", "en-AU")=%% %%[ ENDIF ]%%</td>
+                  </tr>
+            %%[ 
+              SET @mid = Field(Row(@rows, @i), "MID")
+              NEXT @i
+            ]%%
+              </tbody>
+            </table>
+        %%[ ENDIF ]%%      
+    </div>
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+  </body>
+</html>

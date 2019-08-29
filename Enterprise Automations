@@ -17,17 +17,17 @@
         Platform.Load("Core","1.1.1");
 
         try {
-          // We are storing automation information in a DE so we can re-order what is returned from the API calls by MID, then Last Run Date, then Automation Name          
+          // We are storing automation information in a DE so we can re-order what is returned from the API calls by MID, then Last Run Date, then Automation Name
 
           // Clear the DE holding all automations so it is current each time the page loads.
-          var deProx = new Script.Util.WSProxy();          
+          var deProx = new Script.Util.WSProxy();
           var deProps = {
               CustomerKey: 'E0B30515-94EB-45DA-838A-3203DB1C255E' // The external key of Enterprise_Automations
           };
           var deAction = "ClearData";
           var data = deProx.performItem("DataExtension", deProps, deAction);
 
-          // Get all the BU's within the account         
+          // Get all the BU's within the account
           var buProx = new Script.Util.WSProxy();
           var buCols = ["Name", "ID"];
           var buFilter = null;
@@ -85,7 +85,7 @@
                 }
                   
                 
-                for (var j = 0; j< aRes.Results.length; j++) {                  
+                for (var j = 0; j< aRes.Results.length; j++) {
                   var autoName = aRes.Results[j].Name;
 
                   if (autoName != undefined) {
@@ -112,7 +112,7 @@
               }
             }
           }
-        } catch(e) {       
+        } catch(e) {
           // Display full error on the page
           Write('<h3>Error Message:</h3><p>' + Stringify(e.message) + Stringify(e.description) + '</p>');
         }
@@ -150,7 +150,7 @@
                     <td>%%=Field(Row(@rows, @i), "AutoName")=%%</td>
                     <td>%%=Field(Row(@rows, @i), "AutoStatus")=%%</td>
                     <td>%%[ IF @lastRunTime != "1/1/1900 12:00:00 AM" THEN ]%% %%=FormatDate(SystemDateToLocalDate(@lastRunTime), "d/M/yyyy", "HH:MM", "en-AU")=%% %%[ ENDIF ]%%</td>
-                    <td>%%[ IF @scheduledTime != "1/1/1900 12:00:00 AM" THEN ]%% %%=FormatDate(SystemDateToLocalDate(@scheduledTime), "d MMMM yyyy", "HH:MM", "en-AU")=%% %%[ ENDIF ]%%</td>
+                    <td>%%[ IF @scheduledTime != "1/1/1900 12:00:00 AM" THEN ]%% %%=FormatDate(SystemDateToLocalDate(@scheduledTime), "d/M/yyyy", "HH:MM", "en-AU")=%% %%[ ENDIF ]%%</td>
                   </tr>
             %%[ 
               SET @mid = Field(Row(@rows, @i), "MID")
@@ -158,7 +158,7 @@
             ]%%
               </tbody>
             </table>
-        %%[ ENDIF ]%%      
+        %%[ ENDIF ]%%
     </div>
 
     <!-- Optional JavaScript -->

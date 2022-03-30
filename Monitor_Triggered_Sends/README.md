@@ -1,6 +1,5 @@
-#######################
 Monitor Triggered Sends
-#######################
+-----------------------
 
 This process is responsible for ensuring triggered sends are in an active state. It is designed to highlight when a user, for example, republishes an email but forgets to start it running again.
 

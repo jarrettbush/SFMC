@@ -1,3 +1,3 @@
-Workspace for SFMC code amd processes that I don't want to lose.
+Workspace for SFMC processes and associated code.
 
-Details for a given process will be included in Readme files in a given subfolder.
+Process overview will be included in Readme files in subfolder.
